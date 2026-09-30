@@ -947,3 +947,8 @@ Cuando termines, quiero que me expliques con tus palabras:
 > Si puedes responder esas cinco preguntas sin mirar el documento, habras entendido la Arquitectura Hexagonal **y** el flujo profesional de trabajo.
 
 ---
+
+
+## Autors
+- Roberto Luna
+
