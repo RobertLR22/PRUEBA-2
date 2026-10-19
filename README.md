@@ -1,1509 +1,475 @@
-# Guía: Sistema de Auditoría de Inventario
+# "Adivina el Número"
 
-## Arquitectura Hexagonal (Ports & Adapters) con Python
-
-### Filosofía de esta guía
-
-> **Esta guía NO te da las respuestas. Te da las herramientas para que TÚ las construyas.**
->
-> Cada concepto viene con **ejemplos genéricos** (de otros dominios, como animales, vehículos o figuras geométricas) para que entiendas la mecánica. Luego, en tu proyecto real, encontrarás **TODOs con pistas y explicaciones** de qué debe hacer cada pieza, pero **el código lo escribes tú**.
->
-> Si copias y pegas los ejemplos, no aprenderás. Si adaptas los ejemplos a tu problema, sí.
+> **Proyecto de diagnóstico y repaso**
+> Léelo completo antes de escribir una sola línea de código.
 
 ---
 
-## Índice General
+## 0.1 Por qué existe esta estación
 
-1. [Introducción y Filosofía](#1-introducción-y-filosofía)
-2. [Conceptos Fundamentales de Python](#2-conceptos-fundamentales-de-python)
-3. [¿Qué es la Arquitectura Hexagonal?](#3-qué-es-la-arquitectura-hexagonal)
-4. [Flujo de Trabajo Profesional con Git](#4-flujo-de-trabajo-profesional-con-git)
-5. [Configuración Inicial del Repositorio](#5-configuración-inicial-del-repositorio)
-6. [FASE 1: El Dominio](#6-fase-1-el-dominio)
-7. [FASE 2: Los Puertos](#7-fase-2-los-puertos)
-8. [FASE 3: Los Adaptadores](#8-fase-3-los-adaptadores)
-9. [FASE 4: La Aplicación](#9-fase-4-la-aplicación)
-10. [FASE 5: El CLI](#10-fase-5-el-cli)
-11. [Checklist Final](#11-checklist-final-de-arquitectura)
-12. [Glosario Completo](#12-glosario-completo)
-13. [Preguntas de Autoevaluación](#13-preguntas-de-autoevaluación)
+Esta estación no introduce ningún concepto nuevo. Su único propósito es **confirmar** que dominas las herramientas más básicas de Python antes de empezar a construir cosas más grandes.
+
+Si haces este proyecto con soltura y sin ayuda, estás listo para la Estación 1. Si te cuesta, perfecto: mejor descubrirlo ahora que en la Estación 5.
+
+**Duración esperada:** 1 a 2 días.
+
+**Lo que NO vas a aprender aquí:** clases, `@dataclass`, excepciones personalizadas, `abc`, JSON, arquitectura por capas, Git con ramas. Nada de eso. Todo eso viene después, una estación a la vez.
+
+**Lo que SÍ vas a repasar aquí:** variables, `while`, `input`, `if/elif/else`, validación de datos, funciones, `import` y `random`.
 
 ---
 
-## 1. Introducción y Filosofía
+## 0.2 Requisitos previos
 
-### 1.1 ¿Qué especifica esta guia?
+Antes de empezar, verifica que tengas esto:
 
-Esta guía está diseñada para alguien que **apenas comienza** en programación. No asumo que sabes qué es una clase, un objeto, una interfaz o una inyección de dependencias. Vamos a construir todo desde cero, con analogías del mundo real y **ejemplos genéricos** que te enseñen la mecánica.
+- Python 3.10 o superior instalado (`python --version` en terminal).
+- Saber ejecutar un archivo `.py` desde terminal (`python nombre_archivo.py`).
+- Saber qué es una variable, una función, un `if`, un `while`, un `input`.
+- Un editor de código cualquiera (VS Code, PyCharm, Sublime, incluso Notepad++).
 
-**Pero hay una regla inquebrantable:**
-
-> **Cada `# TODO:` que veas en tu proyecto es tuyo. Nadie lo va a resolver por ti.**
->
-> Los ejemplos que verás usan dominios distintos (animales, vehículos, figuras). Tú deberás **traducir** esos ejemplos a tu dominio de inventario. Si te atascas, investiga, prueba, rompe el código y vuelve a intentarlo. Eso es ser ingeniero.
-
-### 1.2 Perfil de Entrada y Salida
-
-| Aspecto | Antes (Entrada) | Después (Salida) |
-|---|---|---|
-| **Python** | Variables, `if/else`, listas, diccionarios, funciones | Clases, objetos, herencia, clases abstractas, dataclasses, tipado |
-| **Arquitectura** | Ninguno | Hexagonal, Puertos y Adaptadores, Inyección de Dependencias |
-| **Git** | `add`, `commit`, `push` básico | Ramas, Pull Requests, Conventional Commits |
-| **Errores** | `try/except` básico | Excepciones personalizadas, traducción de errores |
-| **Persistencia** | Ninguna o archivos de texto | JSON estructurado, repositorios, abstracción |
-
-### 1.3 ¿Qué vas a construir?
-
-Un **Sistema de Auditoría de Inventario** que permita:
-
-1. **Registrar productos** con ID, nombre, cantidad y precio unitario.
-2. **Listar todos los productos** del inventario.
-3. **Buscar productos** por su ID.
-4. **Auditar un producto**: comparar la cantidad registrada contra la contada físicamente.
-5. **Reportar faltantes**: productos cuya cantidad está por debajo de un mínimo.
-6. **Calcular el valor total** del inventario.
-7. **Eliminar productos** del inventario.
+Si algo de esta lista no lo tienes claro, avísame **antes** de empezar.
 
 ---
 
-## 2. Conceptos Fundamentales de Python
+## 0.3 Especificación del Proyecto
 
-Antes de entrar en materia, vamos a repasar los conceptos de Python que usarás. **Cada concepto viene con ejemplos genéricos** (no de inventario) para que entiendas la mecánica. Tú luego los adaptarás a tu problema.
+### 0.3.1 Descripción general
 
-### 2.1 ¿Qué es una Clase?
+Vas a construir un juego de consola llamado **"Adivina el número"** en **un solo archivo** de Python. El programa piensa un número secreto, y el jugador debe adivinarlo en una cantidad limitada de intentos.
 
-#### Analogía: El Plano vs. La Casa
+### 0.3.2 Reglas del juego (contrato funcional)
 
-Una **clase** es un **plano arquitectónico**: define qué tendrá una casa (puertas, ventanas, color). Una **instancia** es una **casa real construida** a partir de ese plano. Puedes construir 100 casas del mismo plano, y cada una tendrá sus propios valores.
+1. Al iniciar, el programa genera un número entero aleatorio entre **1 y 100**.
+2. El jugador tiene exactamente **7 intentos** para adivinarlo.
+3. En cada turno, el programa muestra `Intento X/7:` y espera a que el jugador escriba un número.
+4. Después de cada intento, el programa responde **una** de estas tres opciones:
+   - `Muy bajo.` si el número del jugador es menor que el secreto.
+   - `Bajo`
+   - `Muy alto.` si el número del jugador es mayor que el secreto.
+   - `Alto`
+   - `¡Correcto!` si acertó.
+5. Si el jugador acierta **antes o en el intento 7**, el programa muestra un mensaje de victoria indicando **en cuántos intentos** lo logró, y termina.
+6. Si el jugador **agota los 7 intentos sin acertar**, el programa revela el número secreto y termina.
+7. Si el jugador escribe algo que **no es un número** o que está **fuera del rango 1–100**, el programa muestra un mensaje de error, **no consume el intento**, y vuelve a pedir el número.
 
-#### Ejemplo genérico: Clase `Vehiculo`
+### 0.3.3 Requisitos técnicos obligatorios
 
-```python
-class Vehiculo:
-    def __init__(self, marca, modelo, anio):
-        self.marca = marca
-        self.modelo = modelo
-        self.anio = anio
+- [ ] Todo el código en un único archivo llamado `adivina.py`.
+- [ ] Al menos **dos funciones** definidas por ti (por ejemplo, una función que gestione el flujo principal y otra que pida/valide el intento; tú decides cómo dividirlo).
+- [ ] Al menos **tres constantes** definidas al inicio del archivo.
+- [ ] El número secreto se genera con `random.randint(MINIMO, MAXIMO)`.
+- [ ] El flujo del juego se controla con un bucle `while`.
+- [ ] La validación de entrada se hace **sin** `try/except`. Usa `.strip()` y `.isdigit()` (ver sección 0.5.5).
+- [ ] La salida usa `f-strings` para interpolar variables (por ejemplo, `f"Intento {n}/7:"`).
 
-    def descripcion(self):
-        return f"{self.marca} {self.modelo} ({self.anio})"
+### 0.3.4 Anti-requisitos (lo que NO debes usar)
 
-# Crear instancias
-auto = Vehiculo("Toyota", "Corolla", 2020)
-moto = Vehiculo("Yamaha", "FZ", 2022)
+Estos conceptos **todavía no** te toca usarlos:
 
-print(auto.descripcion())   # Toyota Corolla (2020)
-print(moto.descripcion())   # Yamaha FZ (2022)
+- No `try/except`.
+- No clases (`class`).
+- No `@dataclass`.
+- No `abc`, `@abstractmethod`.
+- No `json`, `open`, ni persistencia en archivos.
+- No múltiples archivos `.py`.
+- No `import` distinto de `random`.
+- No `pytest` ni pruebas automatizadas.
+- No Git con ramas ni Pull Requests (ver sección 0.8).
+
+### 0.3.5 Ejemplo de partida (formato de salida esperado)
+
+**Caso victoria:**
+
+```
+Bienvenido a Adivina el número.
+Piensa un número entre 1 y 100.
+Tienes 7 intentos para adivinarlo.
+
+Intento 1/7: 50
+Muy alto.
+
+Intento 2/7: 25
+Muy bajo.
+
+Intento 3/7: 37
+¡Correcto! Lo lograste en 3 intentos.
 ```
 
-**Explicación línea por línea:**
+**Caso derrota:**
 
-- `class Vehiculo:` → Define una clase. `class` es palabra reservada.
-- `def __init__(self, marca, modelo, anio):` → Constructor. Se ejecuta al crear la instancia. `self` es la referencia al objeto mismo.
-- `self.marca = marca` → Crea un **atributo** llamado `marca` en el objeto y le asigna el valor del parámetro.
-- `def descripcion(self):` → Define un **método** (función que pertenece a la clase).
-- `Vehiculo("Toyota", "Corolla", 2020)` → Llama al constructor. Python crea el objeto, ejecuta `__init__`, y devuelve el objeto.
-- `auto.descripcion()` → Llama al método sobre el objeto. Python pasa automáticamente `auto` como `self`.
+```
+Bienvenido a Adivina el número.
+Piensa un número entre 1 y 100.
+Tienes 7 intentos para adivinarlo.
 
-#### Ejemplo genérico: Clase con validación
+Intento 1/7: 50
+Muy alto.
 
-```python
-class Circulo:
-    def __init__(self, radio):
-        if radio <= 0:
-            raise ValueError("El radio debe ser positivo")
-        self.radio = radio
+Intento 2/7: 25
+Muy bajo.
 
-    def area(self):
-        return 3.1416 * (self.radio ** 2)
+... (5 intentos más, todos incorrectos) ...
 
-# Válido
-c1 = Circulo(5)
-print(c1.area())  # 78.54
+Intento 7/7: 80
+Muy bajo.
 
-# Inválido
-try:
-    c2 = Circulo(-3)
-except ValueError as e:
-    print(f"Error: {e}")  # Error: El radio debe ser positivo
+Se agotaron los intentos. El número secreto era 42.
 ```
 
-**Explicación:**
+**Caso entrada inválida:**
 
-- `if radio <= 0:` → Validación antes de asignar el atributo.
-- `raise ValueError("...")` → Lanza una excepción. Detiene la ejecución del constructor.
-- `try/except` → Captura la excepción para manejarla sin que el programa se caiga.
-- `self.radio ** 2` → Eleva al cuadrado.
+```
+Intento 3/7: abc
+Error: debes escribir un número entero. Intenta de nuevo.
 
-### 2.2 ¿Qué es una `@dataclass`?
+Intento 3/7: 0
+Error: el número debe estar entre 1 y 100.
 
-#### Analogía: El Formulario Pre-impreso
+Intento 3/7: 101
+Error: el número debe estar entre 1 y 100.
 
-Una **`@dataclass`** es como un **formulario pre-impreso**: Python te genera automáticamente el `__init__`, el `__repr__` y la comparación entre objetos. Tú solo declaras los campos.
-
-#### Ejemplo genérico: `@dataclass` para `Libro`
-
-**Sin `@dataclass` (mucho código):**
-
-```python
-class Libro:
-    def __init__(self, titulo, autor, paginas):
-        self.titulo = titulo
-        self.autor = autor
-        self.paginas = paginas
-
-    def __repr__(self):
-        return f"Libro(titulo={self.titulo}, autor={self.autor}, paginas={self.paginas})"
-
-    def __eq__(self, other):
-        if not isinstance(other, Libro):
-            return False
-        return (self.titulo == other.titulo and
-                self.autor == other.autor and
-                self.paginas == other.paginas)
+Intento 3/7: 42
+¡Correcto! Lo lograste en 3 intentos.
 ```
 
-**Con `@dataclass` (mucho menos código):**
-
-```python
-from dataclasses import dataclass
-
-@dataclass
-class Libro:
-    titulo: str
-    autor: str
-    paginas: int
-
-libro = Libro("Cien años de soledad", "García Márquez", 471)
-print(libro)  # Libro(titulo='Cien años de soledad', autor='García Márquez', paginas=471)
-```
-
-**Explicación:**
-
-- `@dataclass` → Decorador que autogenera `__init__`, `__repr__` y `__eq__`.
-- `titulo: str` → Campo con anotación de tipo.
-- `libro = Libro(...)` → Construye la instancia usando el `__init__` autogenerado.
-- `print(libro)` → Usa el `__repr__` autogenerado.
-
-#### Ejemplo genérico: `@dataclass` con validación (`__post_init__`)
-
-```python
-from dataclasses import dataclass
-
-@dataclass
-class Rectangulo:
-    base: float
-    altura: float
-
-    def __post_init__(self):
-        if self.base <= 0:
-            raise ValueError("La base debe ser positiva")
-        if self.altura <= 0:
-            raise ValueError("La altura debe ser positiva")
-
-    def area(self):
-        return self.base * self.altura
-
-# Válido
-r1 = Rectangulo(5, 3)
-print(r1.area())  # 15
-
-# Inválido
-try:
-    r2 = Rectangulo(-2, 4)
-except ValueError as e:
-    print(f"Error: {e}")  # Error: La base debe ser positiva
-```
-
-**Explicación:**
-
-- `def __post_init__(self):` → Se ejecuta **después** del `__init__` autogenerado.
-- `self.base` → Accede al valor ya asignado por el `__init__`.
-- `raise ValueError(...)` → Lanza excepción si la validación falla.
-
-### 2.3 ¿Qué es una Excepción?
-
-#### Analogía: La Alarma de Incendios
-
-Una **excepción** es como una **alarma de incendios**. Cuando algo va mal, no sigues cocinando: suena la alarma, todos evacúan, y se atiende la emergencia. En software, cuando un dato es inválido, **lanzas** una excepción en lugar de dejar pasar datos corruptos.
-
-#### Ejemplo genérico: Excepciones para un sistema de biblioteca
-
-```python
-# Definir excepciones personalizadas
-class ErrorDeBiblioteca(Exception):
-    """Base para errores de la biblioteca."""
-    pass
-
-class LibroNoDisponibleError(ErrorDeBiblioteca):
-    """El libro ya está prestado."""
-    pass
-
-class SocioNoRegistradoError(ErrorDeBiblioteca):
-    """El socio no existe."""
-    pass
-
-# Usarlas
-def prestar_libro(libro, socio):
-    if not socio.registrado:
-        raise SocioNoRegistradoError(f"El socio {socio.nombre} no está registrado")
-    if libro.prestado:
-        raise LibroNoDisponibleError(f"El libro '{libro.titulo}' ya está prestado")
-    libro.prestado = True
-    return f"Libro '{libro.titulo}' prestado a {socio.nombre}"
-```
-
-**Explicación:**
-
-- `class ErrorDeBiblioteca(Exception):` → Excepción base. Hereda de `Exception`.
-- `class LibroNoDisponibleError(ErrorDeBiblioteca):` → Hereda de la base. Si capturas `ErrorDeBiblioteca`, también capturas esta.
-- `raise SocioNoRegistradoError(...)` → Lanza la excepción con un mensaje.
-- **Ventaja:** Si quieres capturar **todos** los errores de biblioteca, haces `except ErrorDeBiblioteca`. Si quieres capturar solo uno, `except LibroNoDisponibleError`.
-
-**¿Por qué no usar `ValueError` directamente?**
-
-Porque `ValueError` es genérico. Si mañana quieres capturar **solo** los errores de tu dominio, usas `except ErrorDeBiblioteca`, y no capturarás otros `ValueError` que no tengan que ver.
-
-### 2.4 ¿Qué es una Clase Abstracta?
-
-#### Analogía: La Oferta de Trabajo
-
-Una **clase abstracta** es como una **oferta de trabajo**: describe **qué** debe hacer el empleado, pero no dice **cómo**. Cualquier persona que cumpla los requisitos puede ser contratada.
-
-#### Ejemplo genérico: Clase abstracta `FiguraGeometrica`
-
-```python
-from abc import ABC, abstractmethod
-
-class FiguraGeometrica(ABC):
-    """Contrato: toda figura debe saber calcular su área y perímetro."""
-
-    @abstractmethod
-    def area(self) -> float:
-        """Calcula el área de la figura."""
-        pass
-
-    @abstractmethod
-    def perimetro(self) -> float:
-        """Calcula el perímetro de la figura."""
-        pass
-
-# Esto falla:
-# f = FiguraGeometrica()  # TypeError: Can't instantiate abstract class
-
-# Esto funciona:
-class Cuadrado(FiguraGeometrica):
-    def __init__(self, lado):
-        self.lado = lado
-
-    def area(self) -> float:
-        return self.lado ** 2
-
-    def perimetro(self) -> float:
-        return self.lado * 4
-
-class Circulo(FiguraGeometrica):
-    def __init__(self, radio):
-        self.radio = radio
-
-    def area(self) -> float:
-        return 3.1416 * self.radio ** 2
-
-    def perimetro(self) -> float:
-        return 2 * 3.1416 * self.radio
-
-# Uso polimórfico
-figuras = [Cuadrado(4), Circulo(3)]
-for f in figuras:
-    print(f"Área: {f.area()}, Perímetro: {f.perimetro()}")
-```
-
-**Explicación:**
-
-- `from abc import ABC, abstractmethod` → Importa `ABC` y `abstractmethod`.
-- `class FiguraGeometrica(ABC):` → Clase abstracta que hereda de `ABC`.
-- `@abstractmethod` → Marca un método como abstracto. Las subclases **deben** implementarlo.
-- `FiguraGeometrica()` → Falla con `TypeError` porque es abstracta.
-- `class Cuadrado(FiguraGeometrica):` → Hereda e implementa **todos** los métodos abstractos.
-- `figuras = [Cuadrado(4), Circulo(3)]` → Polimorfismo: ambas son `FiguraGeometrica`, pero cada una calcula a su manera.
-
-### 2.5 ¿Qué es la Inyección de Dependencias?
-
-#### Analogía: El Chef y su Proveedor
-
-Un **chef** sabe cocinar, pero **no cultiva sus propios vegetales**. Alguien se los entrega: el **proveedor**. El chef no sabe si el proveedor trae del campo, de un invernadero o de otro país; solo sabe que le entregará los ingredientes según un contrato.
-
-#### Ejemplo genérico: Notificador
-
-**Sin inyección (malo):**
-
-```python
-class NotificadorEmail:
-    def enviar(self, mensaje):
-        print(f"Enviando email: {mensaje}")
-
-class ServicioPedidos:
-    def __init__(self):
-        # El servicio CREA su propio notificador
-        self.notificador = NotificadorEmail()
-
-    def procesar(self, pedido):
-        self.notificador.enviar(f"Pedido {pedido} procesado")
-```
-
-**Problema:** Si mañana quieres notificar por SMS, tienes que **modificar** `ServicioPedidos`. Además, no puedes probar sin enviar emails reales.
-
-**Con inyección (bueno):**
-
-```python
-class NotificadorEmail:
-    def enviar(self, mensaje):
-        print(f"Email: {mensaje}")
-
-class NotificadorSMS:
-    def enviar(self, mensaje):
-        print(f"SMS: {mensaje}")
-
-class NotificadorFalso:
-    def __init__(self):
-        self.mensajes = []
-    def enviar(self, mensaje):
-        self.mensajes.append(mensaje)
-
-class ServicioPedidos:
-    def __init__(self, notificador):
-        # El servicio RECIBE su notificador desde fuera
-        self.notificador = notificador
-
-    def procesar(self, pedido):
-        self.notificador.enviar(f"Pedido {pedido} procesado")
-
-# Uso con email
-srv1 = ServicioPedidos(NotificadorEmail())
-srv1.procesar(123)
-
-# Uso con SMS
-srv2 = ServicioPedidos(NotificadorSMS())
-srv2.procesar(456)
-
-# Uso con falso (para pruebas)
-notif_falso = NotificadorFalso()
-srv3 = ServicioPedidos(notif_falso)
-srv3.procesar(789)
-print(notif_falso.mensajes)  # ['Pedido 789 procesado']
-```
-
-**Ventajas:**
-
-1. **Flexibilidad**: Cambias la implementación sin tocar el servicio.
-2. **Testeabilidad**: Inyectas un notificador falso en las pruebas.
-3. **Desacoplamiento**: El servicio no depende de una implementación concreta.
-
-### 2.6 ¿Qué es el Tipado Estricto (`typing`)?
-
-#### Ejemplo genérico: Funciones con anotaciones de tipo
-
-```python
-from typing import List, Optional, Dict
-
-# Sin anotaciones
-def promedio(numeros):
-    return sum(numeros) / len(numeros)
-
-# Con anotaciones
-def promedio_tipado(numeros: List[float]) -> float:
-    return sum(numeros) / len(numeros)
-
-# Opcional (puede ser None)
-def buscar_estudiante(nombre: str) -> Optional[str]:
-    if nombre == "Ana":
-        return "A001"
-    return None
-
-# Diccionario
-def contar_palabras(texto: str) -> Dict[str, int]:
-    resultado = {}
-    for palabra in texto.split():
-        resultado[palabra] = resultado.get(palabra, 0) + 1
-    return resultado
-
-# Uso
-print(promedio_tipado([10.0, 20.0, 30.0]))  # 20.0
-print(buscar_estudiante("Ana"))              # A001
-print(buscar_estudiante("Luis"))             # None
-print(contar_palabras("hola mundo hola"))    # {'hola': 2, 'mundo': 1}
-```
-
-**Explicación:**
-
-- `numeros: List[float]` → Anota que `numeros` es una lista de flotantes.
-- `-> float` → Anota que la función devuelve un flotante.
-- `Optional[str]` → Puede ser `str` o `None`.
-- `Dict[str, int]` → Diccionario con claves string y valores enteros.
-
-**¿Por qué usar tipado?**
-
-1. **Documentación**: Queda claro qué espera y qué devuelve cada función.
-2. **Herramientas**: VS Code te avisa si pasas un tipo incorrecto.
-3. **Verificación**: `mypy` puede verificar los tipos antes de ejecutar.
-4. **Refactorización**: Cambiar un tipo es más seguro porque sabes dónde se usa.
-
-### 2.7 ¿Qué es JSON?
-
-#### Analogía: El Formulario Estandarizado
-
-JSON es un **formato de texto** para guardar datos estructurados. Es como un formulario que cualquier lenguaje de programación puede leer y escribir.
-
-#### Ejemplo genérico: Guardar estudiantes en JSON
-
-```python
-import json
-
-# Diccionario
-estudiante = {"id": "A001", "nombre": "Ana", "nota": 9.5}
-
-# Convertir a JSON (string)
-print(json.dumps(estudiante, indent=4))
-
-# Guardar en archivo
-with open("estudiante.json", "w") as f:
-    json.dump(estudiante, f, indent=4)
-
-# Leer de archivo
-with open("estudiante.json", "r") as f:
-    leido = json.load(f)
-    print(leido["nombre"])  # Ana
-
-# Lista de estudiantes
-estudiantes = [
-    {"id": "A001", "nombre": "Ana", "nota": 9.5},
-    {"id": "A002", "nombre": "Luis", "nota": 7.0}
-]
-with open("estudiantes.json", "w") as f:
-    json.dump(estudiantes, f, indent=4)
-```
-
-**Explicación:**
-
-- `json.dumps(obj)` → Convierte un objeto Python a un string JSON.
-- `json.dump(obj, archivo)` → Escribe el objeto Python directamente en un archivo.
-- `json.load(archivo)` → Lee un archivo JSON y lo convierte a un objeto Python.
-- `indent=4` → Formatea con 4 espacios de indentación.
+Observa con detalle: en el último ejemplo, el intento número 3 se repitió tres veces porque las entradas inválidas **no consumen intento**. Esto es deliberado y es parte del contrato.
 
 ---
 
-## 3. ¿Qué es la Arquitectura Hexagonal?
+## 0.4 Criterios de Aceptación
 
-### 3.1 Analogía: El Enchufe de Pared
+Antes de entregar, tu proyecto debe cumplir **todos** estos puntos:
 
-Imagina que tu casa es el **Dominio** (la lógica de negocio). Las paredes tienen **enchufes** (los **Puertos**), que son un estándar: "cualquier cosa que se enchufe aquí debe entregar 110V y 2 patas". No importa si enchufas una licuadora, un cargador o una TV; el enchufe no cambia. Los **Adaptadores** son los cables específicos de cada dispositivo.
-
-### 3.2 Los Componentes
-
-| Término | Significado | En tu proyecto |
-|---|---|---|
-| **Dominio** | Reglas de negocio puras. | `Producto` |
-| **Puerto** | Contrato/interfaz. | `RepositorioInventario` |
-| **Adaptador** | Implementación concreta. | `RepositorioJSON`, `MenuCLI` |
-| **Caso de Uso** | Orquesta el dominio. | `ServicioAuditoria` |
-| **DI** | Pasar colaboradores desde fuera. | `ServicioAuditoria(repositorio)` |
-
-### 3.3 La Regla Hexagonal
-
-> **El dominio nunca debe importar `json`, `os`, `print`, ni nada de infraestructura. Solo conoce sus puertos.**
-
-- `domain/` no puede tener `import json`, `open()`, `print()`, `input()`.
-- `ports/` solo puede importar `abc`, `typing` y `domain`.
-- `application/` solo puede importar `domain` y `ports`.
-- `adapters/` puede importar todo lo que necesite.
-- `main.py` ensambla todo.
-
-### 3.4 Diagrama
-
-```
-                    ┌─────────────────────────────────────┐
-                    │           main.py                   │
-                    │  (Ensambla todo: DI)                │
-                    └─────────────────────────────────────┘
-                                      │
-              ┌───────────────────────┼───────────────────────┐
-              │                       │                       │
-              ▼                       ▼                       ▼
-    ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
-    │   adapters/     │   │  application/   │   │    ports/       │
-    │  - cli.py       │   │ - services.py   │   │ - repository.py │
-    │  - json_repo.py │   │                 │   │                 │
-    └─────────────────┘   └─────────────────┘   └─────────────────┘
-              │                       │                       │
-              └───────────────────────┼───────────────────────┘
-                                      │
-                                      ▼
-                            ┌─────────────────┐
-                            │    domain/      │
-                            │ - models.py     │
-                            │ - exceptions.py │
-                            └─────────────────┘
-```
+- [ ] `adivina.py` existe y se ejecuta sin errores con `python adivina.py`.
+- [ ] El juego tiene las 7 reglas de la sección 0.3.2 implementadas correctamente.
+- [ ] Las tres constantes (`MINIMO`, `MAXIMO`, `INTENTOS_MAXIMOS`) están definidas al inicio.
+- [ ] Hay al menos dos funciones con nombres descriptivos.
+- [ ] La entrada inválida no rompe el programa ni consume intentos.
+- [ ] El contador de intentos en el mensaje `Intento X/7:` es siempre correcto.
+- [ ] No se usa `try/except`, ni clases, ni `json`, ni nada de los anti-requisitos.
+- [ ] Pasa las pruebas manuales de la sección 0.7 sin fallar.
 
 ---
 
-## 4. Flujo de Trabajo Profesional con Git
+## 0.5 Conceptos a Repasar
 
-### 4.1 ¿Por qué no trabajar directamente en `main`?
+En esta sección repasamos cada concepto que necesitas. Cada ejemplo viene de un **dominio completamente distinto** al de tu juego. La idea es que entiendas **qué hace** el concepto, pero que no puedas copiar y renombrar el código para pegarlo en tu proyecto.
 
-`main` es la rama **estable** y **protegida**. Cada cambio se hace en una rama separada, se revisa mediante un **Pull Request (PR)**, y solo después de la aprobación se fusiona.
+---
 
-**Ventajas:**
+### 0.5.1 Variables
 
-1. **Calidad**: Otro desarrollador revisa tu código.
-2. **Historial limpio**: Cada funcionalidad tiene su rama.
-3. **Seguridad**: Si algo sale mal, reviertes el PR sin afectar a los demás.
-4. **Colaboración**: Varias personas trabajan en paralelo sin pisarse.
+**Qué es:** una variable es una caja etiquetada donde guardas un valor para usarlo después. El nombre describe su contenido.
 
-### 4.2 Modelo de Ramas
+**Ejemplo (dominio: máquina de café):**
 
-```
-main
- |
- |-- feature/domain-core
- |-- feature/ports-interfaces
- |-- feature/infrastructure-adapter
- |-- feature/application-usecases
- |-- feature/cli-menu
+```python
+temperatura_actual = 22          # grados centígrados
+temperatura_objetivo = 90        # grados centígrados
+cafe_listo = False
+tiempo_inicio = 0                # segundos
 ```
 
-**Reglas:**
+**Lo que debes observar:**
+- Los nombres son descriptivos, no `x` ni `a`.
+- Los valores iniciales tienen sentido.
+- Los booleanos se usan para estados de "sí/no".
 
-1. `main` es **intocable directamente**.
-2. Cada fase en su propia rama `feature/*`.
-3. Una rama = una responsabilidad = un PR.
-4. Commits **atómicos** con **Conventional Commits**.
-5. Antes de pedir revisión, corre tus pruebas y verifica el checklist.
+---
 
-### 4.3 Convención de Ramas
+### 0.5.2 Bucle `while`
 
-| Tipo | Prefijo | Ejemplo |
-|---|---|---|
-| Nueva funcionalidad | `feature/` | `feature/domain-core` |
-| Corrección de bug | `fix/` | `fix/json-corrupto` |
-| Refactor | `refactor/` | `refactor/servicio-auditoria` |
-| Documentación | `docs/` | `docs/readme-inicial` |
-| Mantenimiento | `chore/` | `chore/gitignore` |
+**Qué es:** un `while` repite un bloque de código mientras una condición sea verdadera. La condición se evalúa **antes** de cada vuelta.
 
-### 4.4 Conventional Commits
+**Ejemplo (dominio: semáforo peatonal con botón):**
 
-**Formato:**
+```python
+boton_presionado = False
+segundos_esperando = 0
 
-```
-<tipo>(<alcance>): <descripción corta en imperativo>
-```
+while not boton_presionado:
+    segundos_esperando = segundos_esperando + 1
+    if segundos_esperando >= 5:
+        boton_presionado = True
 
-| Tipo | Uso |
-|---|---|
-| `feat` | Nueva funcionalidad |
-| `fix` | Corrección de bug |
-| `refactor` | Cambio sin nueva funcionalidad ni fix |
-| `docs` | Solo documentación |
-| `test` | Pruebas |
-| `chore` | Build, dependencias, configuración |
-| `style` | Formato, sin cambios de lógica |
-
-**Ejemplos correctos:**
-
-```
-feat(domain): agregar entidad Producto con validaciones
-fix(adapters): manejar JSONDecodeError en RepositorioJSON
-refactor(application): inyectar repositorio por constructor
-docs(readme): agregar guía de flujo Git
+print("Puedes cruzar")
 ```
 
-**Ejemplos incorrectos:**
+**Lo que debes observar:**
+- La condición del `while` debe poder cambiar a `False` **dentro** del bucle, o será infinito.
+- La variable `segundos_esperando` se incrementa dentro del bucle.
+- Hay una condición de salida por tiempo, no por acierto.
 
-```
-cambios              <- vago
-Update models.py     <- sin tipo, mayúscula
-arregle el bug       <- sin tipo, sin alcance
+**Pregunta para ti:** ¿cuál es la condición exacta para que **tu** `while` siga corriendo? ¿Y cuál es la condición para que termine? Piensa en las dos cosas: acertar y agotar intentos.
+
+---
+
+### 0.5.3 `input()`
+
+**Qué es:** `input()` muestra un mensaje al usuario, espera a que escriba algo y presione Enter, y **devuelve lo escrito como texto** (tipo `str`, no `int`).
+
+**Ejemplo (dominio: pedido de restaurante):**
+
+```python
+nombre_plato = input("¿Qué plato deseas?: ")
+bebida = input("¿Qué bebida?: ")
+print("Pedido confirmado:", nombre_plato, "con", bebida)
 ```
 
-### 4.5 Ciclo de Trabajo por Fase
+**Lo que debes observar:**
+- `input("mensaje")` devuelve **siempre** un string. Aunque el usuario escriba `5`, `input()` devuelve `"5"` (texto), no `5` (número).
+- La comparación `input() == 42` **siempre da `False`**, porque `"42"` no es igual a `42`.
+- Por eso necesitarás convertir a entero después de validar (con `int()`).
+
+---
+
+### 0.5.4 Condicionales `if` / `elif` / `else`
+
+**Qué es:** un condicional evalúa una condición booleana y ejecuta un bloque u otro según el resultado. `elif` solo se evalúa si el `if` anterior fue falso. `else` se ejecuta si nada fue verdadero.
+
+**Ejemplo (dominio: termostato de aire acondicionado):**
+
+```python
+temperatura = 18
+
+if temperatura < 15:
+    print("Encender calefacción")
+elif temperatura < 22:
+    print("Temperatura agradable")
+else:
+    print("Encender aire acondicionado")
+```
+
+**Lo que debes observar:**
+- Solo **una** rama se ejecuta por cada evaluación.
+- Si usas `if` en lugar de `elif`, podrías ejecutar varias ramas por error.
+- El orden de las condiciones importa: si `temperatura = 10`, entra al primer `if` y no llega al `elif`.
+
+---
+
+### 0.5.5 Validación de entrada
+
+**Qué es:** validar es revisar que los datos que llegan sean los esperados **antes** de usarlos. Si no son válidos, se le pide al usuario que corrija.
+
+**Ejemplo (dominio: formulario de teléfono):**
+
+```python
+telefono = input("Teléfono (10 dígitos): ").strip()
+
+if not telefono.isdigit():
+    print("Error: solo se permiten números.")
+elif len(telefono) != 10:
+    print("Error: deben ser exactamente 10 dígitos.")
+else:
+    print("Teléfono válido:", telefono)
+```
+
+**Lo que debes observar y reutilizar como técnica:**
+- `.strip()` elimina espacios al inicio y al final. Úsalo siempre sobre el resultado de `input()`.
+- `.isdigit()` devuelve `True` si el string contiene **solo dígitos** y al menos un carácter. Devuelve `False` para strings vacíos, con letras, con puntos o con signos.
+- `len()` cuenta caracteres.
+- Si usas `.isdigit()` para validar, no necesitas `try/except`. Esa es la razón por la que tu proyecto **no** debe usar `try/except`: la validación con `.isdigit()` es suficiente para un rango de 1 a 100.
+- Después de validar que es dígito, sí conviertes a entero con `int()`.
+
+**Nota importante:** `.isdigit()` **no acepta** números negativos (`"-5".isdigit()` es `False`). Para tu juego eso está bien, porque los negativos están fuera del rango 1–100 de todos modos. Pero tenlo presente para el futuro.
+
+---
+
+### 0.5.6 Funciones
+
+**Qué es:** una función es un bloque de código con nombre que puedes llamar varias veces. Recibe parámetros (opcionalmente) y puede devolver un valor (opcionalmente).
+
+**Ejemplo (dominio: cajero de tienda):**
+
+```python
+def calcular_cambio(precio, pago):
+    return pago - precio
+
+
+def mostrar_ticket(producto, precio, pago):
+    cambio = calcular_cambio(precio, pago)
+    print(f"Producto: {producto}")
+    print(f"Precio: ${precio}")
+    print(f"Pagaste: ${pago}")
+    print(f"Cambio: ${cambio}")
+
+
+mostrar_ticket("Café americano", 35, 50)
+```
+
+**Lo que debes observar:**
+- `return` devuelve un valor que puedes guardar en una variable.
+- Una función puede llamar a otra función (composición).
+- Una función puede no devolver nada (como `mostrar_ticket`) y aun así ser útil: hace una acción.
+- Los parámetros son la forma de pasar datos **hacia adentro** de la función.
+
+**Pregunta para ti:** ¿cuáles son las dos (o más) funciones que **tu** proyecto necesita? Una suele ser el flujo principal. ¿Qué otra cosa repetitiva podrías aislar en una función?.
+
+---
+
+### 0.5.7 `random` (la única importación permitida)
+
+**Qué es:** el módulo `random` genera valores pseudoaleatorios. Para este proyecto solo necesitas una función: `random.randint(a, b)`, que devuelve un entero aleatorio entre `a` y `b`, ambos inclusive.
+
+**Ejemplo (dominio: tirar un dado de 6 caras):**
+
+```python
+import random
+
+resultado = random.randint(1, 6)
+print(f"Tiraste un {resultado}")
+```
+
+**Nota honesta sobre este concepto:** este es el **único** caso de todo el documento donde la sintaxis exacta que necesitas es igual a la del ejemplo. No hay otra forma de generar un número aleatorio en un rango en Python. Pero tú decides **qué rango** usar y **dónde** guardar el resultado. El ejemplo usa 1–6 (dado); tu juego usará otros valores definidos por tus constantes.
+
+---
+
+## 0.6 Errores Comunes (Anti-patrones a Evitar)
+
+Estos son los tropiezos más frecuentes. Si alguno te pasa, no es fracaso: es parte del aprendizaje. Pero detéctalos **antes** de entregar.
+
+1. **Olvidar `.strip()`** antes de `.isdigit()`. Si el usuario escribe `" 5 "` (con espacios), `.isdigit()` devuelve `False` y el programa rechaza un número válido.
+2. **Comparar el string de `input()` con un entero.** `input("...") == 42` siempre es `False`, porque `"42" != 42`. Debes convertir a entero **después** de validar.
+3. **Contar intentos fuera del `while`.** Si el contador se incrementa una sola vez, nunca llegará a 7. Debe incrementarse dentro del bucle (o donde corresponda según tu diseño).
+4. **No incrementar intentos en entradas inválidas... pero tampoco dejarlo mal.** Regla del contrato: **entrada inválida NO consume intento**. Verifica esto con cuidado: no basta con "no incrementar", tienes que asegurarte de que el flujo vuelve a pedir el número **sin** haber consumido uno.
+5. **Usar `if` en lugar de `elif`** cuando solo debe ejecutarse una rama. Si el jugador acierta, no debe imprimir también "muy alto" o "muy bajo".
+6. **Olvidar `break` o una bandera de salida** después de acertar. Si solo imprimes `¡Correcto!` pero no rompes el bucle, el juego sigue corriendo.
+7. **Hardcodear el número secreto.** Debes usar `random.randint(MINIMO, MAXIMO)`, no `42` escrito a mano.
+8. **Meter todo el código en el nivel superior del archivo sin funciones.** El contrato exige al menos dos funciones.
+9. **No manejar el caso de agotar intentos.** Si el jugador nunca acierta, el programa debe revelar el número y terminar, no quedarse colgado.
+10. **Usar `try/except`.** Eso viene en la Estación 4. Aquí no.
+
+---
+
+## 0.7 Pruebas Manuales Obligatorias
+
+Antes de entregar, ejecuta estas pruebas a mano. Si alguna falla, corrige y vuelve a empezar.
+
+### Prueba A - Camino feliz (victoria)
+
+1. Ejecuta `python adivina.py`.
+2. Juega hasta acertar en algún intento menor a 7.
+3. Verifica:
+   - [ ] El mensaje de bienvenida aparece.
+   - [ ] Los intentos se numeran correctamente del 1 al que aciertes.
+   - [ ] Cada intento incorrecto muestra "Muy bajo" o "Muy alto" (según corresponda).
+   - [ ] Al acertar, se imprime `¡Correcto!` con el número de intentos usados.
+   - [ ] El programa termina.
+
+### Prueba B - Camino de derrota
+
+1. Ejecuta `python adivina.py`.
+2. Juega 7 veces con números incorrectos.
+3. Verifica:
+   - [ ] Se muestran los 7 intentos numerados del 1 al 7.
+   - [ ] Al llegar al intento 7 sin acertar, se revela el número secreto.
+   - [ ] El programa termina sin colgarse.
+
+### Prueba C - Validación de entradas inválidas
+
+En una partida, en algún intento escribe **en este orden**:
+
+1. `abc` → debe mostrar error, **no** consumir intento, y volver a pedir el mismo número de intento.
+2. `5.5` → debe mostrar error, **no** consumir intento.
+3. `-5` → debe mostrar error, **no** consumir intento.
+4. `0` → debe mostrar error, **no** consumir intento (fuera de rango).
+5. `101` → debe mostrar error, **no** consumir intento (fuera de rango).
+6. `  50  ` (con espacios) → debe **aceptar** como número válido.
+7. Presionar Enter sin escribir nada → debe mostrar error, no consumir intento.
+
+### Prueba D - Contador correcto
+
+1. Ejecuta y juega.
+2. En cada `Intento X/7`, verifica que `X` refleje el número real de intentos consumidos (las entradas inválidas no deben aumentar `X`).
+3. Al final, el número de intentos reportado en el mensaje de victoria debe coincidir con el último `X` que se mostró antes de acertar.
+
+### Prueba E - Sin concepto prohibido
+
+Ejecuta en la terminal, dentro de la carpeta del proyecto:
 
 ```bash
-# 1. Asegurarte de estar en main actualizado
-git checkout main
-git pull origin main
-
-# 2. Crear la rama de la fase
-git checkout -b feature/nombre-de-la-fase
-
-# 3. Trabajar, haciendo commits atómicos
-git add <archivo-especifico>       # NUNCA 'git add .' a ciegas
-git commit -m "feat(scope): descripción clara"
-
-# 4. Empujar la rama
-git push -u origin feature/nombre-de-la-fase
-
-# 5. Abrir PR en GitHub:
-#    - Título en Conventional Commit
-#    - Descripción con checklist
-#    - Asignar revisor
-#    - NO hacer merge tú mismo
-
-# 6. Esperar revisión, aplicar cambios, empujar de nuevo
-git add <archivo>
-git commit -m "refactor(scope): aplicar feedback"
-git push
-
-# 7. Una vez aprobado, el revisor hace merge (Squash & Merge)
-# 8. Volver a main y actualizar
-git checkout main
-git pull origin main
-
-# 9. Borrar la rama local
-git branch -d feature/nombre-de-la-fase
+grep -n "try\|except\|class \|import json\|open(" adivina.py
 ```
 
-### 4.6 Plantilla de Pull Request
-
-Guarda este archivo como `.github/pull_request_template.md`:
-
-```markdown
-## Descripción
-<!-- Qué hace este PR y por qué -->
-
-## Fase
-<!-- Fase 1, 2, 3, 4 o 5 -->
-
-## Tipo de cambio
-- [ ] Nueva funcionalidad (feat)
-- [ ] Corrección de bug (fix)
-- [ ] Refactor (refactor)
-- [ ] Documentación (docs)
-
-## Cómo probarlo
-<!-- Comandos exactos que el revisor debe ejecutar -->
-
-## Checklist
-- [ ] Los commits siguen Conventional Commits
-- [ ] El código no rompe la arquitectura hexagonal
-- [ ] `grep -R "print(\|import json\|open(" domain/ ports/` devuelve vacío
-- [ ] Las pruebas manuales de la fase pasan
-- [ ] No hay archivos basura en el PR
-
-## Capturas / Evidencia
-<!-- Opcional -->
-```
-
-### 4.7 Reglas de Convivencia
-
-- **No hagas force push** sobre ramas de otros.
-- **No mezcles dos fases en un mismo PR.**
-- **No commitees** archivos de `data/*.json`.
-- **Revisa tu propio diff** antes de pedir revisión: `git diff main...HEAD`.
-- **Sé consistente** con el idioma de los commits.
-
-### 4.8 Ejercicio de Verificación del Flujo
-
-Antes de empezar la Fase 1, crea un PR de prueba:
-
-```bash
-git checkout -b docs/readme-inicial
-# Edita este README (agrega tu nombre como autor)
-git add README.md
-git commit -m "docs(readme): agregar autor del proyecto"
-git push -u origin docs/readme-inicial
-# Abre el PR en GitHub, asígnalo a tu mentor
-```
-
-**Criterio de aceptación:**
-- El PR se ve profesional.
-- El checklist está marcado.
-- El mentor puede hacer merge sin pedir cambios.
+Debe devolver **vacío**. Si devuelve algo, estás violando un anti-requisito.
 
 ---
 
-## 5. Configuración Inicial del Repositorio
+## 0.8 Git (Versión Mínima para Esta Estación)
+
+En esta estación **no usamos ramas ni Pull Requests**. Eso empieza en la Estación 1. Aquí solo practicamos los comandos más básicos.
 
 ```bash
-# 1. Clona el repositorio o inicialízalo
-git clone <url-del-repo>
-cd inventory_audit
+# 1. Si no tienes repositorio, inicialízalo
+git init
 
-# 2. Crea la estructura base
-mkdir -p domain ports adapters application data
+# 2. Primer commit: cuando ya tengas un archivo adivina.py, aunque esté incompleto
+git add adivina.py
+git commit -m "feat: esqueleto inicial del juego"
 
-# 3. Crea los __init__.py vacíos
-touch domain/__init__.py ports/__init__.py adapters/__init__.py application/__init__.py
+# 3. Cuando el juego esté completo y pase todas las pruebas manuales
+git add adivina.py
+git commit -m "feat: juego adivina el numero completo"
 
-# 4. Crea un .gitignore mínimo
-cat > .gitignore << 'EOF'
-__pycache__/
-*.pyc
-*.pyo
-.env
-.venv/
-venv/
-data/*.json
-.pytest_cache/
-.mypy_cache/
-EOF
-
-# 5. Crea la plantilla de PR
-mkdir -p .github
-# Pega aquí el contenido de la sección 4.6
-
-# 6. Primer commit en una rama
-git checkout -b chore/estructura-inicial
-git add .
-git commit -m "chore: estructura inicial del proyecto hexagonal"
-git push -u origin chore/estructura-inicial
-# Abre PR, espera revisión, merge
+# 4. Revisar el historial
+git log --oneline
 ```
 
-### Estructura final esperada
+**Reglas de commit para esta estación:**
 
-```
-inventory_audit/
-├── .github/
-│   └── pull_request_template.md
-├── domain/          # Reglas de negocio puras
-│   └── __init__.py
-├── ports/           # Contratos (interfaces)
-│   └── __init__.py
-├── adapters/        # Implementaciones concretas
-│   └── __init__.py
-├── application/     # Casos de uso / servicios
-│   └── __init__.py
-├── data/            # Archivos JSON de persistencia
-├── main.py          # Punto de entrada (se crea en Fase 5)
-├── README.md        # Este documento
-└── .gitignore
-```
+- Empieza el mensaje con `feat:` cuando el commit agrega funcionalidad.
+- Sé específico y breve. "cambios" no es un buen mensaje.
+- Haz al menos **dos commits** (uno con el esqueleto, uno con la versión final). Así practicas la idea de commits atómicos.
 
 ---
 
-## 6. FASE 1: El Dominio
+## 0.9 Qué Hacer Si Te Atascas
 
-**Rama:** `feature/domain-core`
+Sigue este protocolo en orden. No saltes al final.
 
-### 6.1 Objetivos
-
-- Crear `domain/exceptions.py` con excepciones personalizadas.
-- Crear `domain/models.py` con la entidad `Producto` como `@dataclass`.
-- **Regla estricta:** ningún `print`, `import json`, `open()` dentro de `domain/`.
-
-### 6.2 ¿Qué es una Entidad?
-
-Una **entidad** es un objeto con **identidad propia**. En tu caso, un `Producto` tiene un `id` único que lo distingue. Aunque dos productos tengan el mismo nombre y precio, si tienen `id` diferente, son productos distintos.
-
-**Características:**
-- Tiene un identificador único.
-- Tiene datos que la describen.
-- Tiene reglas de negocio.
-- **No sabe** cómo se guarda ni cómo se muestra.
-
-### 6.3 ¿Qué son las Excepciones de Dominio?
-
-Las **excepciones de dominio** representan errores específicos de las reglas de negocio. No son errores técnicos ("archivo no encontrado"), sino errores de negocio ("producto inválido").
-
-**Ventajas:**
-1. **Claridad**: `ProductoInvalidoError` es más descriptivo que `ValueError`.
-2. **Jerarquía**: Puedes capturar todas con `except ErrorDeDominio`.
-3. **Separación**: El dominio no depende de excepciones genéricas.
-
-### 6.4 Crear `domain/exceptions.py`
-
-**Lo que debes construir:**
-
-Necesitas **tres** excepciones:
-
-1. `ErrorDeDominio` → Base para todas. Hereda de `Exception`.
-2. `ProductoInvalidoError` → Hereda de `ErrorDeDominio`. Se lanza cuando un producto viola las reglas.
-3. `ProductoNoEncontradoError` → Hereda de `ErrorDeDominio`. Se lanza cuando buscas un producto que no existe.
-
-**Pista basada en el ejemplo genérico:**
-
-En el ejemplo de la biblioteca viste cómo se define una jerarquía de excepciones:
-
-```python
-class ErrorDeBiblioteca(Exception):
-    pass
-
-class LibroNoDisponibleError(ErrorDeBiblioteca):
-    pass
-```
-
-**Tu tarea:** Adapta ese patrón a tu dominio. Escribe `domain/exceptions.py` con las tres clases. Agrega docstrings que expliquen cuándo se lanza cada una.
-
-**Criterio de verificación:**
-
-```bash
-python -c "from domain.exceptions import ErrorDeDominio, ProductoInvalidoError, ProductoNoEncontradoError; print('OK')"
-# Debe imprimir: OK
-```
-
-### 6.5 Crear `domain/models.py`
-
-**Lo que debes construir:**
-
-Una `@dataclass` llamada `Producto` con **cuatro campos**:
-
-- `id: str`
-- `nombre: str`
-- `cantidad: int`
-- `precio_unitario: float`
-
-Y un método `__post_init__` que valide:
-
-- `id` no vacío.
-- `nombre` no vacío.
-- `cantidad >= 0`.
-- `precio_unitario >= 0`.
-
-Si alguna validación falla, lanza `ProductoInvalidoError`.
-
-**Pista basada en el ejemplo genérico:**
-
-En el ejemplo del `Rectangulo` viste cómo se valida en `__post_init__`:
-
-```python
-@dataclass
-class Rectangulo:
-    base: float
-    altura: float
-
-    def __post_init__(self):
-        if self.base <= 0:
-            raise ValueError("La base debe ser positiva")
-        # ...
-```
-
-**Tu tarea:** Adapta ese patrón. En lugar de `ValueError`, lanza `ProductoInvalidoError`. Agrega las cuatro validaciones. Piensa: ¿cómo verificas que un string no está vacío? (Pista: `if not self.nombre or self.nombre.strip() == "":`).
-
-**Criterio de verificación:**
-
-```bash
-# Producto válido
-python -c "from domain.models import Producto; p = Producto('A1','Laptop',5,1500.0); print(p)"
-# Debe imprimir: Producto(id='A1', nombre='Laptop', cantidad=5, precio_unitario=1500.0)
-
-# Producto inválido (cantidad negativa)
-python -c "from domain.models import Producto; Producto('A2','Mouse',-3,25.0)"
-# Debe lanzar ProductoInvalidoError
-
-# Verificar que NO hay acoplamiento a infraestructura
-grep -R "import json\|open(\|print(" domain/
-# Debe estar vacío
-```
-
-### 6.6 Cierre de la Fase
-
-```bash
-git add domain/exceptions.py domain/models.py
-git commit -m "feat(domain): agregar entidad Producto y excepciones de dominio"
-git push -u origin feature/domain-core
-# Abre PR siguiendo la plantilla
-```
-
-### 6.7 Preguntas de Autoevaluación
-
-1. ¿Qué diferencia hay entre una clase y una instancia?
-2. ¿Qué hace el decorador `@dataclass`?
-3. ¿Para qué sirve `__post_init__`?
-4. ¿Por qué creamos excepciones personalizadas en lugar de usar `ValueError`?
-5. ¿Por qué `domain/` no debe importar `json`?
+1. **Relee la sección 0.5** del concepto que no entiendes.
+2. **Abre una terminal de Python** (`python` sin argumentos) y copia el ejemplo de esa sección línea por línea. Ejecuta cada línea para ver qué pasa.
+3. **Imprime variables** dentro de tu código para ver qué valores tienen en cada paso. Por ejemplo: `print("DEBUG numero_secreto =", numero_secreto)` o `print("DEBUG intento =", intento)`. Luego borra esas líneas cuando termines.
+4. **Aíslate en un archivo aparte.** Si tu `while` no funciona, crea un archivo `prueba.py` con solo ese `while` y un `print()` de prueba, hasta que funcione. Luego lo llevas al proyecto.
+5. **Hazte dos preguntas clave:**
+   - ¿Cuál es la condición exacta para que el `while` siga corriendo?
+   - ¿Cuál es la condición exacta para que termine? (Pista: hay **dos** formas de que termine).
+6. Si tras 30 minutos seguidos sigues atascado en lo mismo dime lo siguiente:
+   - Qué intentaste.
+   - Qué esperabas que pasara.
+   - Qué pasó en realidad (pega el error o el output).
+   - El fragmento mínimo de código que reproduce el problema.
 
 ---
 
-## 7. FASE 2: Los Puertos
+## 0.10 Checklist Final de Aceptación
 
-**Rama:** `feature/ports-interfaces`
+Marca cada casilla **solo** cuando lo hayas verificado tú mismo.
 
-### 7.1 Objetivos
-
-- Crear `ports/repository.py` con una clase abstracta `RepositorioInventario`.
-- Definir métodos abstractos con tipado estricto.
-- **No** implementar lógica: solo firmas.
-
-### 7.2 ¿Qué es un Puerto?
-
-Un **puerto** es un **contrato**. Define **qué** se necesita, pero no **cómo** se hace. En tu caso, `RepositorioInventario` dice: "quien me implemente debe saber guardar, listar, buscar por ID y eliminar productos".
-
-**Analogía:** Un puerto USB define la forma del conector, no el dispositivo.
-
-### 7.3 Crear `ports/repository.py`
-
-**Lo que debes construir:**
-
-Una clase abstracta `RepositorioInventario(ABC)` con **cuatro métodos abstractos**:
-
-1. `guardar(self, producto: Producto) -> None`
-2. `listar(self) -> List[Producto]`
-3. `buscar_por_id(self, producto_id: str) -> Optional[Producto]`
-4. `eliminar(self, producto_id: str) -> None`
-
-Cada método debe:
-- Tener `@abstractmethod`.
-- Tener un docstring que explique qué hace.
-- Tener `pass` como cuerpo (no implementación).
-
-**Pista basada en el ejemplo genérico:**
-
-En el ejemplo de `FiguraGeometrica` viste cómo se define una clase abstracta:
-
-```python
-from abc import ABC, abstractmethod
-
-class FiguraGeometrica(ABC):
-    @abstractmethod
-    def area(self) -> float:
-        pass
-```
-
-**Tu tarea:** Adapta ese patrón. Importa `Producto` desde `domain.models`. Usa `List` y `Optional` desde `typing`.
-
-**Criterio de verificación:**
-
-```bash
-# NO se puede instanciar
-python -c "from ports.repository import RepositorioInventario; RepositorioInventario()"
-# Debe lanzar TypeError: Can't instantiate abstract class
-
-# El puerto NO importa infraestructura
-grep -R "import json\|open(" ports/
-# Debe estar vacío
-```
-
-### 7.4 Reto Extra (Opcional): Puerto Notificador
-
-Si quieres practicar, crea `ports/notificador.py` con una clase abstracta `Notificador` que tenga un método `notificar(mensaje: str) -> None`. Lo usarás en la Fase 4 si decides implementarlo.
-
-### 7.5 Cierre de la Fase
-
-```bash
-git add ports/repository.py
-git commit -m "feat(ports): contrato RepositorioInventario con métodos abstractos"
-git push -u origin feature/ports-interfaces
-# Abre PR siguiendo la plantilla
-```
-
-### 7.6 Preguntas de Autoevaluación
-
-1. ¿Qué diferencia hay entre una clase normal y una abstracta?
-2. ¿Para qué sirve `@abstractmethod`?
-3. ¿Por qué no se puede instanciar `RepositorioInventario`?
-4. ¿Qué significa que un puerto sea un "contrato"?
-5. ¿Por qué el puerto no debe saber si los datos se guardan en JSON o SQL?
+- [ ] `adivina.py` existe y corre con `python adivina.py`.
+- [ ] Las 7 reglas de la sección 0.3.2 están implementadas.
+- [ ] Hay al menos dos funciones definidas.
+- [ ] Las tres constantes (`MINIMO`, `MAXIMO`, `INTENTOS_MAXIMOS`) están al inicio.
+- [ ] Se usa `random.randint`.
+- [ ] La validación con `.strip()` + `.isdigit()` + rango funciona.
+- [ ] Las entradas inválidas no consumen intento.
+- [ ] El contador `Intento X/7` es correcto en todo momento.
+- [ ] El camino de victoria y el de derrota funcionan.
+- [ ] `grep -n "try\|except\|class \|import json\|open(" adivina.py` devuelve vacío.
+- [ ] Hay al menos dos commits en Git con mensajes descriptivos.
+- [ ] Pasaste las pruebas manuales A, B, C, D y E.
 
 ---
 
-## 8. FASE 3: Los Adaptadores
+## 0.11 Qué Viene Después
 
-**Rama:** `feature/infrastructure-adapter`
+Si esta estación te resultó cómoda, estás listo para la **Estación 1: Agenda de contactos en memoria**.
 
-### 8.1 Objetivos
+En la Estación 1 seguimos sin clases ni archivos, pero introduciremos:
 
-- Crear `adapters/json_repository.py`.
-- Implementar `RepositorioJSON(RepositorioInventario)`.
-- Manejar: archivo inexistente, JSON corrupto, permisos denegados.
-- **No** romper el contrato: implementar **todos** los métodos abstractos.
+- Listas de diccionarios (una estructura de datos nueva).
+- Menús con varias opciones (un `while` con `if/elif` más elaborado).
+- **Git con ramas**, aunque todavía sin Pull Requests.
 
-### 8.2 ¿Qué es un Adaptador?
-
-Un **adaptador** es una **implementación concreta** de un puerto. Mientras el puerto dice "necesito guardar productos", el adaptador dice "yo los guardo en JSON".
-
-### 8.3 ¿Qué es `try/except`?
-
-`try/except` maneja errores sin que el programa se caiga. Pones el código riesgoso en `try`, y el manejo en `except`.
-
-**Analogía:** Cuando conduces, no asumes que nunca habrá un choque: llevas cinturón. En código, no asumes que el archivo JSON siempre existirá o será válido.
-
-### 8.4 Crear `adapters/json_repository.py`
-
-**Lo que debes construir:**
-
-Una clase `RepositorioJSON` que herede de `RepositorioInventario`. Debe tener:
-
-**Constructor `__init__(self, ruta_archivo: str)`:**
-- Guardar `ruta_archivo` en `self.ruta`.
-- Si el archivo no existe, crearlo con una lista vacía `[]`.
-- Capturar `PermissionError` y lanzar `ErrorDeDominio`.
-
-**Método privado `_leer_todos(self) -> List[dict]`:**
-- Abrir el archivo, `json.load`, retornar la lista.
-- Capturar `FileNotFoundError` → retornar `[]`.
-- Capturar `json.JSONDecodeError` → lanzar `ErrorDeDominio("JSON corrupto")`.
-- Capturar `PermissionError` → lanzar `ErrorDeDominio("Sin permisos")`.
-
-**Método privado `_escribir_todos(self, datos: List[dict]) -> None`:**
-- Abrir en modo `'w'`, `json.dump` con `indent=4`.
-- Capturar `PermissionError` → lanzar `ErrorDeDominio`.
-
-**Método `guardar(self, producto: Producto) -> None`:**
-- Leer todos.
-- Convertir `producto` a diccionario.
-- Buscar por `id`: si existe, actualizar; si no, `append`.
-- Escribir de nuevo.
-
-**Método `listar(self) -> List[Producto]`:**
-- Leer todos.
-- Convertir cada dict a `Producto` con una list comprehension.
-
-**Método `buscar_por_id(self, producto_id: str) -> Optional[Producto]`:**
-- Leer todos.
-- Iterar y retornar el `Producto` o `None`.
-
-**Método `eliminar(self, producto_id: str) -> None`:**
-- Leer todos.
-- Filtrar la lista.
-- Si no cambió el tamaño, lanzar `ProductoNoEncontradoError`.
-- Escribir de nuevo.
-
-**Pista basada en el ejemplo genérico:**
-
-En el ejemplo de JSON viste cómo leer y escribir:
-
-```python
-with open("archivo.json", "w") as f:
-    json.dump(datos, f, indent=4)
-
-with open("archivo.json", "r") as f:
-    datos = json.load(f)
-```
-
-**Tu tarea:** Adapta ese patrón. Envuelve las operaciones riesgosas en `try/except`. Traduce los errores técnicos a `ErrorDeDominio`.
-
-**Criterio de verificación:**
-
-```bash
-# Guardar y listar
-python -c "
-from adapters.json_repository import RepositorioJSON
-from domain.models import Producto
-r = RepositorioJSON('data/test.json')
-r.guardar(Producto('P1','Teclado',10,25.0))
-r.guardar(Producto('P2','Monitor',3,300.0))
-for p in r.listar(): print(p)
-"
-
-# Buscar por id
-python -c "
-from adapters.json_repository import RepositorioJSON
-r = RepositorioJSON('data/test.json')
-print(r.buscar_por_id('P1'))
-print(r.buscar_por_id('NOEXISTE'))  # None
-"
-
-# Eliminar
-python -c "
-from adapters.json_repository import RepositorioJSON
-r = RepositorioJSON('data/test.json')
-r.eliminar('P2')
-for p in r.listar(): print(p)
-"
-
-# JSON corrupto
-echo "esto no es json" > data/test.json
-python -c "
-from adapters.json_repository import RepositorioJSON
-r = RepositorioJSON('data/test.json')
-r.listar()  # Debe lanzar ErrorDeDominio
-"
-```
-
-### 8.5 Cierre de la Fase
-
-```bash
-git add adapters/json_repository.py
-git commit -m "feat(adapters): repositorio JSON con manejo de errores de E/S"
-git push -u origin feature/infrastructure-adapter
-# Abre PR siguiendo la plantilla
-```
-
-### 8.6 Preguntas de Autoevaluación
-
-1. ¿Qué diferencia hay entre un puerto y un adaptador?
-2. ¿Por qué `RepositorioJSON` hereda de `RepositorioInventario`?
-3. ¿Qué pasa si el archivo JSON está corrupto?
-4. ¿Por qué traducimos `JSONDecodeError` a `ErrorDeDominio`?
-5. ¿Qué significa `isinstance(r, RepositorioInventario)`?
-
----
-
-## 9. FASE 4: La Aplicación
-
-**Rama:** `feature/application-usecases`
-
-### 9.1 Objetivos
-
-- Crear `application/services.py` con `ServicioAuditoria`.
-- Inyectar el repositorio por constructor.
-- Implementar: `registrar_producto`, `listar_inventario`, `calcular_valor_total`, `reportar_faltantes`, `auditar`, `eliminar_producto`.
-
-### 9.2 ¿Qué es un Servicio de Aplicación?
-
-Un **servicio** **orquesta** el dominio para cumplir una tarea. No contiene reglas de negocio (esas están en el dominio), ni detalles de infraestructura (esos están en los adaptadores). Solo coordina.
-
-**Analogía:** Un chef sabe cocinar, pero no cultiva sus vegetales. Alguien se los entrega: el proveedor (repositorio).
-
-### 9.3 Crear `application/services.py`
-
-**Lo que debes construir:**
-
-Una clase `ServicioAuditoria` con:
-
-**Constructor `__init__(self, repositorio: RepositorioInventario)`:**
-- Guardar `repositorio` en `self.repositorio`.
-- **No** crear el repositorio dentro. Recibirlo desde fuera (DI).
-
-**Método `registrar_producto(self, producto: Producto) -> None`:**
-- Delegar al repositorio: `self.repositorio.guardar(producto)`.
-
-**Método `listar_inventario(self) -> List[Producto]`:**
-- Delegar al repositorio: `return self.repositorio.listar()`.
-
-**Método `calcular_valor_total(self) -> float`:**
-- Listar productos.
-- Sumar `cantidad * precio_unitario` de cada uno.
-- Retornar el total.
-
-**Método `reportar_faltantes(self, minimo: int = 5) -> List[Producto]`:**
-- Listar productos.
-- Filtrar los que tengan `cantidad < minimo`.
-- Retornar la lista filtrada.
-
-**Método `auditar(self, id_producto: str, cantidad_contada: int) -> Dict[str, int]`:**
-- Buscar el producto con `self.repositorio.buscar_por_id(id_producto)`.
-- Si es `None`, lanzar `ProductoNoEncontradoError`.
-- Retornar un dict con:
-  - `'esperado'`: `producto.cantidad`
-  - `'contado'`: `cantidad_contada`
-  - `'diferencia'`: `producto.cantidad - cantidad_contada`
-
-**Método `eliminar_producto(self, id_producto: str) -> None`:**
-- Delegar al repositorio: `self.repositorio.eliminar(id_producto)`.
-
-**Pista basada en el ejemplo genérico:**
-
-En el ejemplo del chef viste cómo se inyecta un colaborador:
-
-```python
-class ServicioPedidos:
-    def __init__(self, notificador):
-        self.notificador = notificador
-```
-
-**Tu tarea:** Adapta ese patrón. En lugar de un notificador, inyecta un `RepositorioInventario`. Implementa los seis métodos. Piensa: ¿qué método del repositorio necesitas en cada caso?
-
-**Criterio de verificación:**
-
-```bash
-# Crear un repositorio EN MEMORIA falso para probar la DI
-cat > /tmp/fake_repo.py << 'EOF'
-from typing import List, Optional
-from ports.repository import RepositorioInventario
-from domain.models import Producto
-from domain.exceptions import ProductoNoEncontradoError
-
-class RepoMemoria(RepositorioInventario):
-    def __init__(self): self._data = {}
-    def guardar(self, p: Producto) -> None: self._data[p.id] = p
-    def listar(self) -> List[Producto]: return list(self._data.values())
-    def buscar_por_id(self, i: str) -> Optional[Producto]: return self._data.get(i)
-    def eliminar(self, i: str) -> None:
-        if i not in self._data: raise ProductoNoEncontradoError(i)
-        del self._data[i]
-EOF
-
-# Usar el servicio con el repo falso
-PYTHONPATH=/tmp python -c "
-from fake_repo import RepoMemoria
-from application.services import ServicioAuditoria
-from domain.models import Producto
-
-srv = ServicioAuditoria(RepoMemoria())
-srv.registrar_producto(Producto('A1','Laptop',2,1500.0))
-srv.registrar_producto(Producto('A2','Mouse',20,25.0))
-print('Total:', srv.calcular_valor_total())
-print('Faltantes:', srv.reportar_faltantes(minimo=5))
-print('Auditoria:', srv.auditar('A1', 1))
-"
-```
-
-### 9.4 Cierre de la Fase
-
-```bash
-git add application/services.py
-git commit -m "feat(application): servicio de auditoría con DI del repositorio"
-git push -u origin feature/application-usecases
-# Abre PR siguiendo la plantilla
-```
-
-### 9.5 Preguntas de Autoevaluación
-
-1. ¿Qué es la Inyección de Dependencias?
-2. ¿Por qué el servicio no crea su propio repositorio?
-3. ¿Qué ventaja tiene poder inyectar `RepoMemoria` en lugar de `RepositorioJSON`?
-4. ¿Qué hace el método `auditar`?
-5. ¿Por qué `calcular_valor_total` no está en el repositorio?
-
----
-
-## 10. FASE 5: El CLI
-
-**Rama:** `feature/cli-menu`
-
-### 10.1 Objetivos
-
-- Crear `adapters/cli.py` con `MenuCLI`.
-- Crear `main.py` que ensamble todo.
-- El CLI **no debe** contener lógica de negocio: solo llama al servicio.
-
-### 10.2 ¿Qué es un Adaptador de Entrada?
-
-Un **adaptador de entrada** es la interfaz por donde el usuario interactúa. Puede ser CLI, API REST, GUI, etc.
-
-**Analogía:** El dominio es el hotel. El recepcionista es el adaptador CLI: traduce lo que pide el cliente al lenguaje del hotel.
-
-### 10.3 Crear `adapters/cli.py`
-
-**Lo que debes construir:**
-
-Una clase `MenuCLI` con:
-
-**Constructor `__init__(self, servicio: ServicioAuditoria)`:**
-- Guardar `servicio` en `self.servicio`.
-
-**Método `ejecutar(self) -> None`:**
-- Bucle `while True`.
-- Mostrar menú con `_mostrar_menu()`.
-- Pedir opción con `input()`.
-- `if/elif` para cada opción.
-- Opción `"6"` → `break`.
-
-**Método `_mostrar_menu(self) -> None`:**
-- Imprimir las opciones: 1. Registrar, 2. Listar, 3. Auditar, 4. Faltantes, 5. Eliminar, 6. Salir.
-
-**Método `_opcion_registrar(self) -> None`:**
-- Pedir `id`, `nombre`, `cantidad`, `precio` con `input()`.
-- Convertir `cantidad` a `int` y `precio` a `float`.
-- Construir `Producto(...)`.
-- Llamar `self.servicio.registrar_producto(producto)`.
-- Envolver en `try/except`:
-  - `ValueError` → mensaje amigable sobre números.
-  - `ErrorDeDominio` → mostrar `e`.
-
-**Método `_opcion_listar(self) -> None`:**
-- Llamar `self.servicio.listar_inventario()`.
-- Si está vacío, mostrar mensaje.
-- Si no, formatear como tabla.
-- Mostrar `self.servicio.calcular_valor_total()`.
-
-**Método `_opcion_auditar(self) -> None`:**
-- Pedir `id` y `cantidad_contada`.
-- Llamar `self.servicio.auditar(id, cantidad)`.
-- Mostrar `esperado`, `contado`, `diferencia`.
-- `try/except` para `ValueError` y `ErrorDeDominio`.
-
-**Método `_opcion_faltantes(self) -> None`:**
-- Pedir `minimo`.
-- Llamar `self.servicio.reportar_faltantes(minimo)`.
-- Mostrar la lista o mensaje de "no hay faltantes".
-
-**Método `_opcion_eliminar(self) -> None`:**
-- Pedir `id`.
-- Llamar `self.servicio.eliminar_producto(id)`.
-- `try/except ErrorDeDominio`.
-
-**Pista basada en el ejemplo genérico:**
-
-En el ejemplo del notificador viste cómo se usa un servicio:
-
-```python
-srv = ServicioPedidos(NotificadorEmail())
-srv.procesar(123)
-```
-
-**Tu tarea:** Adapta ese patrón. En lugar de `ServicioPedidos`, usa `ServicioAuditoria`. En lugar de `procesar`, llama a los métodos del servicio. **El CLI no sabe de JSON ni de reglas de negocio; solo llama al servicio.**
-
-### 10.4 Crear `main.py`
-
-**Lo que debes construir:**
-
-Una función `main()` que:
-
-1. Cree `RepositorioJSON("data/inventario.json")`.
-2. Lo inyecte a `ServicioAuditoria(repositorio)`.
-3. Inyecte el servicio a `MenuCLI(servicio)`.
-4. Llame `menu.ejecutar()`.
-
-Y un `if __name__ == "__main__": main()`.
-
-**Pista basada en el ejemplo genérico:**
-
-```python
-def main():
-    notificador = NotificadorEmail()
-    servicio = ServicioPedidos(notificador)
-    # ...
-```
-
-**Tu tarea:** Adapta ese patrón. Ensambla las piezas: repositorio → servicio → menú.
-
-### 10.5 Ejercicios de Verificación
-
-```bash
-# Flujo completo interactivo
-python main.py
-# -> Registrar producto: A1, Laptop, 3, 1500
-# -> Listar -> debe aparecer
-# -> Auditar A1 con cantidad 1 -> diferencia 2
-# -> Faltantes (mínimo 5) -> debe aparecer A1
-# -> Eliminar A1 -> Listar -> vacío
-# -> Salir
-
-# Verificar el JSON generado
-cat data/inventario.json
-# Debe ser JSON válido con indentación
-
-# Error controlado
-python main.py
-# -> Registrar producto con cantidad negativa
-# -> Debe imprimir mensaje amigable, NO un traceback
-
-# Arquitectura intacta
-grep -R "print(" domain/ ports/ application/
-# Debe estar vacío
-```
-
-### 10.6 Cierre de la Fase
-
-```bash
-git add adapters/cli.py main.py
-git commit -m "feat(cli): menú interactivo y orquestación en main"
-git push -u origin feature/cli-menu
-# Abre PR siguiendo la plantilla
-```
-
-### 10.7 Preguntas de Autoevaluación
-
-1. ¿Por qué el CLI no debe contener lógica de negocio?
-2. ¿Qué hace `main.py`?
-3. ¿Por qué `main.py` es el único que conoce todas las piezas?
-4. ¿Qué pasaría si mañana quieres cambiar el CLI por una API REST?
-5. ¿Por qué `domain/` no tiene `print`?
-
----
-
-## 11. Checklist Final de Arquitectura
-
-Antes de hacer el PR final a `main`, verifica:
-
-| | Criterio | Comando |
-|---|---|---|
-| [ ] | `domain/` no importa infraestructura | `grep -R "import json\|open(" domain/` |
-| [ ] | `ports/` no importa adaptadores | `grep -R "adapters" ports/` |
-| [ ] | `application/` no instancia repositorios | `grep -R "RepositorioJSON(" application/` |
-| [ ] | El servicio funciona con dos repos distintos | Prueba con `RepoMemoria` |
-| [ ] | Todos los métodos abstractos implementados | `python -c "from adapters.json_repository import RepositorioJSON; RepositorioJSON('x.json')"` |
-| [ ] | Errores de E/S traducidos a `ErrorDeDominio` | Prueba con JSON corrupto |
-| [ ] | `main.py` solo ensambla | Revisión manual |
-| [ ] | Los 5 PRs fueron aprobados | Revisión en GitHub |
-
-### Entrega final
-
-```bash
-git checkout main
-git pull origin main
-git log --oneline --graph
-# Debe mostrar los 5 merges de las fases
-```
-
----
-
-## 12. Glosario Completo
-
-| Término | Significado | Ejemplo |
-|---|---|---|
-| **Entidad** | Objeto con identidad propia. | `Producto` |
-| **Puerto** | Interfaz abstracta. | `RepositorioInventario` |
-| **Adaptador** | Implementación concreta. | `RepositorioJSON` |
-| **Caso de Uso** | Acción de negocio. | `registrar_producto` |
-| **DI** | Pasar dependencias desde fuera. | `ServicioAuditoria(repositorio)` |
-| **Acoplamiento** | Grado de dependencia. Objetivo: bajo. | — |
-| **Cohesión** | Propósito único. Objetivo: alto. | — |
-| **`@dataclass`** | Autogenera `__init__`, `__repr__`, `__eq__`. | `Producto` |
-| **`@abstractmethod`** | Obliga a implementar. | `guardar`, `listar` |
-| **`__post_init__`** | Hook tras `__init__`. | Validaciones en `Producto` |
-| **Conventional Commits** | Estándar de commits. | `feat(domain): ...` |
-| **Pull Request** | Solicitud de fusión. | PR de cada fase |
-| **Squash & Merge** | Combina commits en uno. | Al aprobar PR |
-| **Excepción** | Error que interrumpe. | `ProductoInvalidoError` |
-| **Try/Except** | Manejo de errores. | En `RepositorioJSON` |
-| **JSON** | Formato de texto. | `data/inventario.json` |
-| **Herencia** | Una clase deriva de otra. | `RepositorioJSON(RepositorioInventario)` |
-| **Polimorfismo** | Tratar objetos distintos igual. | `RepoMemoria` y `RepositorioJSON` |
-| **Tipado** | Anotaciones de tipo. | `List[Producto]` |
-
----
-
-## 13. Preguntas de Autoevaluación
-
-Cuando termines, quiero que me expliques con tus palabras:
-
-1. **¿Por qué `domain/` no debe saber que existe un archivo `.json`?**
-
-2. **¿Qué ganaste al inyectar el repositorio al servicio en lugar de crearlo adentro?**
-
-3. **¿Qué pasaría si mañana el jefe pide migrar de JSON a PostgreSQL? ¿Cuántos archivos tendrías que tocar?**
-
-4. **¿Por qué no commiteamos directamente a `main`?**
-
-5. **¿Qué diferencia hay entre un commit atómico y uno que mezcla varias cosas?**
-
-### Ejercicio Final: Explica la Arquitectura
-
-Escribe un documento de una página explicando:
-
-1. Qué es la Arquitectura Hexagonal.
-2. Cuáles son sus componentes.
-3. Por qué el dominio no debe depender de la infraestructura.
-4. Cómo la Inyección de Dependencias ayuda a testear.
-5. Qué ventajas tiene este diseño sobre uno tradicional (todo en un solo archivo).
-
-### Ejercicio Extra: Migrar a SQLite
-
-Si quieres practicar más:
-
-1. Crea `adapters/sqlite_repository.py`.
-2. Implementa `RepositorioSQLite(RepositorioInventario)`.
-3. Usa `sqlite3` en lugar de `json`.
-4. Cambia `main.py` para que use `RepositorioSQLite`.
-5. Verifica que **no tuviste que tocar** `domain/`, `ports/` ni `application/`.
-
-**Esto demuestra el poder de la Arquitectura Hexagonal.**
-
----
-
-## 14. Mensaje Final
-
-No te frustres si en la Fase 3 el JSON te da problemas, ni si en la Fase 4 no entiendes por qué inyectar en vez de crear dentro. **Esa incomodidad es el aprendizaje.**
-
-Cuando termines, quiero que me expliques con tus palabras:
-
-1. ¿Por qué `domain/` no debe saber que existe un archivo `.json`?
-2. ¿Qué ganaste al inyectar el repositorio al servicio en lugar de crearlo adentro?
-3. ¿Qué pasaría si mañana el jefe pide migrar de JSON a PostgreSQL? ¿Cuántos archivos tendrías que tocar?
-4. ¿Por qué no commiteamos directamente a `main`?
-5. ¿Qué diferencia hay entre un commit atómico y uno que mezcla varias cosas?
-
-> Si puedes responder esas cinco preguntas sin mirar este documento, habrás entendido la Arquitectura Hexagonal **y** el flujo profesional de trabajo.
-
----
-
-## Autores
-
-- **Rasiel Espinal** - Documento original
-- **Roberto Luna** - Estudiante 
----
-
-*Última actualización: 30 de sep del 2026*
+Si esta estación te costó, no te preocupes: repítela una vez más con variaciones (por ejemplo, sube el rango a 1–1000, o baja los intentos a 5). La repetición con variaciones es una de las formas más efectivas de consolidar el aprendizaje.
